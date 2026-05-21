@@ -1,12 +1,13 @@
 pipeline {
-    agent {
-        node {
-            label 'microdegree'
-        }
-    }
+    agent any 
+        // node {
+        //     label 'microdegree'
+        // }
+    
     
     environment {
-        IMAGE_NAME = "sun113/microdegree"
+        // IMAGE_NAME = "sun113/microdegree"
+        IMAGE_NAME = "047719618727.dkr.ecr.us-east-1.amazonaws.com/django-cicd-demo"
         IMAGE_TAG = "latest"
         CONTAINER_NAME = "microdegree-container"
         PORT = "8000"
@@ -24,19 +25,36 @@ pipeline {
                 sh "docker build -t $IMAGE_NAME:$IMAGE_TAG ."
             }
         }
-        stage("pushing docker image to dockerhub"){
+        // stage("pushing docker image to dockerhub"){
+        //     steps {
+        //         withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+        //             sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
+        //             // sh "docker tag $IMAGE_NAME:$IMAGE_TAG $DOCKER_USER/$IMAGE_NAME:$IMAGE_TAG"
+        //             sh "docker push $IMAGE_NAME:$IMAGE_TAG"
+        //             sh "docker pull $IMAGE_NAME:$IMAGE_TAG"
+        //         }
+        //     }
+        // }
+        
+        stage ("Login to ECR") {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                    // sh "docker tag $IMAGE_NAME:$IMAGE_TAG $DOCKER_USER/$IMAGE_NAME:$IMAGE_TAG"
-                    sh "docker push $IMAGE_NAME:$IMAGE_TAG"
-                    sh "docker pull $IMAGE_NAME:$IMAGE_TAG"
-                }
+                sh '''
+                    aws ecr get-login-password --region us-east-1 | \
+                    docker login --username AWS --password-stdin 047719618727.dkr.ecr.us-east-1.amazonaws.com
+                '''
             }
         }
+
+        stage('Push Image to ECR') {
+            steps {
+                sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
+            }
+        }
+
+
         stage("Deploy Docker containers To Production"){
             input {
-                message "Deploying Docker container to EC2 instance. Please confirm to proceed."
+                message "Deploying Docker container to EC2."
                 ok "Deploy"
             }
             steps {
